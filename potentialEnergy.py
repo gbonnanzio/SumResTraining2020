@@ -6,7 +6,7 @@ import os
 
 def determinePE(xPos,yPos,zPos):
     
-    nAtoms = len(xData)
+    nAtoms = len(xPos)
     allR = []
     allPE = []
     totalPE = 0
@@ -49,33 +49,34 @@ def determinePE(xPos,yPos,zPos):
         allPE.append(avgPE)
         avgR = totalR/(nAtoms-1)
         allR.append(avgR)
+        totalPE = 0
+        totalR = 0
 
     return allPE,allR
     
 
 def main():
     #specify where the text file is located
-    filePath = open('/Users/gbonn/Summer_Research_2020/lammps_tut/allCoords.txt',r)
+    filePath = open('/Users/gbonn/Summer_Research_2020/lammps_tut/testCoords.txt','r')
     finalPE = []
     finalR = []
     xData = []
     yData = []
     zData = []
     
-    timeStep = 0
     for lineNum, line in enumerate(filePath):
-        testLine = lineNum%502
-        while(testLine != 0 and testLine!=1)):
+        testLine = lineNum%503
+        if(testLine != 0 and testLine!=1):
             lineList = line.split()
             xData.append(float(lineList[1]))
             yData.append(float(lineList[2]))
             zData.append(float(lineList[3]))
-        if(xData != ""):
-            tempPE,tempR = determinePE(xData,yData,zData)
-            finalPE.append(tempPE)
-            finalR.append(tempR)
+            if(testLine == 502):
+                tempPE,tempR = determinePE(xData,yData,zData)
+                finalPE.append(tempPE)
+                finalR.append(tempR)
         
- 
+    filePath.close()
     #plot potential energy at each time step
     plt.plot(finalR,finalPE)
     plt.xlabel('Distance')
