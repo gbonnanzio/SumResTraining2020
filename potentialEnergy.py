@@ -56,6 +56,8 @@ def determinePE(xPos,yPos,zPos):
 def main():
     #specify where the text file is located
     filePath = open('/Users/gbonn/Summer_Research_2020/lammps_tut/allCoords.txt',r)
+    finalPE = []
+    finalR = []
     xData = []
     yData = []
     zData = []
@@ -69,28 +71,14 @@ def main():
             yData.append(float(lineList[2]))
             zData.append(float(lineList[3]))
         if(xData != ""):
-            determinePE(xData,yData,zData)
-
-            
-
-
-    
-
-
-    timeStep = []
-    potentialEnergy = []
-    #calculate and keep track of potential energy for each time step
-    for fileName in textFiles:
-        tempFile = filePath + fileName
-        tempPE = determinePE(tempFile)
-        timeStep.append(float(fileName[:7]))
-        potentialEnergy.append(tempPE)
-        #stringPE = str(determinePE(tempFile)) 
-        #print("At time step " + fileName[:7] + " potential energy equals " + stringPE + " eV.")
-    
+            tempPE,tempR = determinePE(xData,yData,zData)
+            finalPE.append(tempPE)
+            finalR.append(tempR)
+        
+ 
     #plot potential energy at each time step
-    plt.plot(timeStep,potentialEnergy)
-    plt.xlabel('Time Step')
+    plt.plot(finalR,finalPE)
+    plt.xlabel('Distance')
     plt.ylabel('Potential Energy (eV)')
     plt.show()
 
