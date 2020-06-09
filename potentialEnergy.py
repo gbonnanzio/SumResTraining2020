@@ -5,7 +5,7 @@ import math
 import os
 
 def determinePE(coordFile):
-    #let's see if this works
+    
     #coordFile is a txt file of the coords at a single time step
     data = np.loadtxt(fname = coordFile)
 
@@ -54,10 +54,28 @@ def determinePE(coordFile):
     
 
 def main():
-    #specify where text files are located
-    filePath = '/Users/gbonn/Summer Research 2020/lammps_tut/coordTime'
-    #using 6 text files
-    textFiles = ['0000000.txt','0200000.txt','0400000.txt','0600000.txt','0800000.txt','1000000.txt']
+    #specify where the text file is located
+    filePath = open('/Users/gbonn/Summer_Research_2020/lammps_tut/allCoords.txt',r)
+    xPos = []
+    yPos = []
+    zPos = []
+    
+    timeStep = 0
+    for lineNum, line in enumerate(filePath):
+        testLine = lineNum%502
+        if (testLine == 0):
+            timeStep = timeStep + 1
+        elif(testLine != 1):
+            lineList = line.split()
+            xPos.append(lineList[1])
+            yPos.append(lineList[2])
+            zPos.append(lineList[3])
+
+
+
+    
+
+
     timeStep = []
     potentialEnergy = []
     #calculate and keep track of potential energy for each time step
