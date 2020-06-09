@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 import os
+import statistics
 
 def determinePE(xPos,yPos,zPos):
     
@@ -51,8 +52,11 @@ def determinePE(xPos,yPos,zPos):
         allR.append(avgR)
         totalPE = 0
         totalR = 0
+    
+    overallAvgPE = statistics.mean(allPE)
+    overallAvgR = statistics.mean(allR)
 
-    return allPE,allR
+    return overallAvgPE, overallAvgR
     
 
 def main():
@@ -65,18 +69,24 @@ def main():
     zData = []
     
     for lineNum, line in enumerate(filePath):
-        testLine = lineNum%503
+        testLine = lineNum%502
         if(testLine != 0 and testLine!=1):
             lineList = line.split()
             xData.append(float(lineList[1]))
             yData.append(float(lineList[2]))
             zData.append(float(lineList[3]))
-            if(testLine == 502):
+            if(testLine == 501):
                 tempPE,tempR = determinePE(xData,yData,zData)
                 finalPE.append(tempPE)
                 finalR.append(tempR)
         
     filePath.close()
+    #outFile = open('/Users/gbonn/Summer_Research_2020/lammps_tut/testOutput.txt','w')
+    #for indx in len(finalR):
+     #   outFile.write(finalR[indx] + ' PE:')
+     #   outFile.write(finalPE[indx]+'\n')
+    #outFile.close()
+    
     #plot potential energy at each time step
     plt.plot(finalR,finalPE)
     plt.xlabel('Distance')
