@@ -5,6 +5,7 @@ import math
 import os
 
 def determinePE(coordFile):
+    #let's see if this works
     #coordFile is a txt file of the coords at a single time step
     data = np.loadtxt(fname = coordFile)
 
