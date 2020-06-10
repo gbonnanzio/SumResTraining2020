@@ -2,16 +2,12 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import math
-import os
-import statistics
 
 def determinePE(xPos,yPos,zPos):
     
     nAtoms = len(xPos)
     allR = []
     allPE = []
-    totalPE = 0
-    totalR = 0
 
     for i in range(nAtoms-1):
         for j in range(i+1,nAtoms):
@@ -44,15 +40,11 @@ def determinePE(xPos,yPos,zPos):
             #find r
             rSq = (diffX**2)+(diffY**2)+(diffZ**2)
             allR.append(rSq)
-            #tempPE = 4.0*(((1/r)**12)-((1/r)**6))
-            
+            tempPE = 4.0*(((1/rSq)**6)-((1/rSq)**3))
+            allPE.append(tempPE)
         
-        
-        totalPE = 0
-        totalR = 0
-    
-    itMin, itMax = minMaxRVal(allR)  
-    return itMin, itMax
+    allR = np.sqrt(allR)
+    return allR, allPE
     
 def minMaxRVal(rValues):
     #function that tells me min and max r over all data so 
@@ -64,9 +56,7 @@ def minMaxRVal(rValues):
 
 def main():
     #specify where the text file is located
-    filePath = open('/Users/gbonn/Summer_Research_2020/lammps_tut/firstCoupleLamp.txt','r')
-    finalPE = []
-    finalR = []
+    filePath = open('/Users/gbonn/Summer_Research_2020/lammps_tut/lastTimeStep.txt','r')
     xData = []
     yData = []
     zData = []
@@ -74,6 +64,8 @@ def main():
     allMaxR = []
     currMin = 1000
     currMax = 0
+    allR = []
+    allPE = []
     
     for lineNum, line in enumerate(filePath):
         testLine = lineNum%509
@@ -83,15 +75,17 @@ def main():
             yData.append(float(lineList[3]))
             zData.append(float(lineList[4]))
             if(testLine == 508):
-                tempMin,tempMax = determinePE(xData,yData,zData)
-                if(tempMin<currMin):
-                    currMin = tempMin
-                if(tempMax>currMax):
-                    currMax = tempMax
-                #finalPE.append(tempPE)
-                #finalR.append(tempR)
+                tempR,tempPE = determinePE(xData,yData,zData)
+                allR.append(tempR)
+                allPE.append(tempPE)
+                #if(tempMin<currMin):
+                 #   currMin = tempMin
+                #if(tempMax>currMax):
+                 #   currMax = tempMax
+                if(lineNum > 510):
+                    break
     
-    print(currMin,currMax)
+    #print(currMin,currMax)
     filePath.close()
 
     #outFile = open('/Users/gbonn/Summer_Research_2020/lammps_tut/testOutput.txt','w')
@@ -101,10 +95,14 @@ def main():
     #outFile.close()
     
     #plot potential energy at each time step
-    #plt.plot(finalR,finalPE)
-    #plt.xlabel('Distance')
-    #plt.ylabel('Potential Energy (eV)')
-    #plt.show()
+    print(len(allR[0]),len(allPE[0]))
+    plt.plot(allR[0],allPE[0],'ro',ms = 1)
+    plt.xlim(0,10)
+    plt.ylim(-2,15)
+    #plt.plot(allR[1],allPE[1],'ro')
+    plt.xlabel('Distance')
+    plt.ylabel('Potential Energy')
+    plt.show()
 
 #run functions    
 main()
