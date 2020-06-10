@@ -46,44 +46,55 @@ def determinePE(xPos,yPos,zPos):
     allR = np.sqrt(allR)
     return allR, allPE
     
-def binning(allRValues,allPEValues,numBins):
+def binning(timeStepRValues,timeStepPEValues,allBinned,numBins):
+    #takes current r and PE values for one time step
+    #adds them in to the overall bin created
+    binnedR = []
+    binnedPE = []
+    lengthList = numBins
     numBins = float(numBins)
-    binSpace = math.ceil((math.sqrt(10.0*math.sqrt(3))/(numBins)))
-    rPEPairs = [[]]
-    currR = 0
-    for indx in range(numBins):
-        rPEPairs[indx][0] = currR
-        currR = currR + binSpace
-    for timeStep in range(len(allRValues)):
-        for atomRIndx in range(len(allRValues[timeStep])):
-            tempR = allRValues[timeStep][atomRIndx]
-            binIndx = -1
-            while (tempR < rPEPairs[binIndx]):
-                binIndx = binIndx - 1
-            tempPE = allPEValues[timeStep][atomRIndx]
-            if(len(rPEPairs[binIndx]) == 1):
-                rPEPairs[binIndx][1] = tempPE
-                rPEPairs[binIndx][2] = 1.0
-            else:
-                totPrevPE = rPEPairs[binIndx][1]*rPEPairs[binIndx][2]
-                rPEPairs[binIndx][2] = rPEPairs[binIndx][2] + 1.0
-                rPEPairs[binIndx][1] = (totPrevPE + tempPE)/rPEPairs[binIndx][2]
-
-
-    return rPEPairs
+    binSpace = ((math.sqrt(10.0*math.sqrt(3))/(numBins)))
+    currR = 0.91
+    #if we are creating the final bins for the first time
+    if(len(allBinned) == 0):
+        for indx in range(lengthList):
+            tmpList = [currR, 0, 0]
+            allBinned.append(tmpList)
+            currR = currR + binSpace
+    for timeStep in range(len(timeStepRValues)):
+        tempR = timeStepRValues[timeStep]
+        tempPE = timeStepPEValues[timeStep]
+        binIndx = -1
+        while (tempR < allBinned[binIndx][0]):
+            binIndx = binIndx - 1
+            if(binIndx == -len(allBinned)):
+                binIndx = 0
+                break
+        #if PE hasn't been added to bin yet
+        if(allBinned[binIndx][2] == 0): 
+            allBinned[binIndx][1] = tempPE
+            allBinned[binIndx][2] = 1.0 #added one PE so far
+        #if PE has already been added to this bin before 
+        else:
+            totPrevPE = allBinned[binIndx][1]*allBinned[binIndx][2]
+            allBinned[binIndx][2] = allBinned[binIndx][2] + 1.0
+            allBinned[binIndx][1] = (totPrevPE + tempPE)/allBinned[binIndx][2]
+            
+    
+    return allBinned, binSpace
 
 def main():
     #specify where the text file is located
     filePath = open('/Users/gbonn/Summer_Research_2020/lammps_tut/melt.lmpdump','r')
-    #outFile = open('/Users/gbonn/Summer_Research_2020/lammps_tut/rAndPE_pairs.txt','w')
+    #outFile = open('/Users/gbonn/Summer_Research_2020/lammps_tut/totalPE.txt','w')
     xData = []
     yData = []
     zData = []
-    allMinR = []
-    allMaxR = []
-    allR = []
-    allPE = []
-    
+    binsTotal = []
+    binnedR = []
+    binnedPE = []
+    binWidth = 0
+
     for lineNum, line in enumerate(filePath):
         testLine = lineNum%509
         if(testLine not in range(9)):
@@ -93,32 +104,40 @@ def main():
             zData.append(float(lineList[4]))
             if(testLine == 508):
                 #print(xData[-1],yData[-1],zData[-1])
+                #print(len(binsTotal))
                 tempR,tempPE = determinePE(xData,yData,zData)
-                allR.append(tempR)
-                allPE.append(tempPE)
+                binsTotal, binWidth = binning(tempR,tempPE,binsTotal,50)
                 xData = []
                 yData = []
                 zData = []
                 #if(lineNum > 508):
                     #outFile.write(str(tempR) + " " + str(tempPE) + "\n")
-                if(lineNum >= 500):
-                    break
+                #if(lineNum >= 10000):
+                    #break
     
-    finalPairs = binning(allR,allPE,10)
-    print(finalPairs)
-    #print(currMin,currMax)
+    #print(len(binsTotal))
+    #print(binsTotal)
+    reimannApprox = 0
+    for indx in range(len(binsTotal)):
+        binnedR.append(binsTotal[indx][0])
+        binnedPE.append(binsTotal[indx][1])
+        reimannApprox = reimannApprox + binWidth*binsTotal[indx][1]
+    
+    print(reimannApprox)
+    
     filePath.close()
     #outFile.close()
     
     #plot potential energy at each time step
-    #print(len(allR[0]),len(allPE[0]))
-    #plt.plot(allR[0],allPE[0],'ro',ms = 1)
-    #plt.xlim(0,10)
-    #plt.ylim(-2,15)
+    
+    plt.plot(binnedR,binnedPE,lw = 1)
+    #plt.plot(allR[2],allPE[2],'ro',ms = 1)
+    plt.xlim(0,4)
+    plt.ylim(-2,8)
     #plt.plot(allR[1],allPE[1],'ro')
-    #plt.xlabel('Distance')
-    #plt.ylabel('Potential Energy')
-    #plt.show()
+    plt.xlabel('Distance')
+    plt.ylabel('Potential Energy')
+    plt.show()
 
 #run functions    
 main()
