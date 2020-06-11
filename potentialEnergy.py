@@ -51,16 +51,17 @@ def binning(timeStepRValues,timeStepPEValues,allBinned,numBins):
     #adds them in to the overall bin created
     binnedR = []
     binnedPE = []
-    lengthList = numBins
-    numBins = float(numBins)
-    binSpace = ((math.sqrt(10.0*math.sqrt(3))/(numBins)))
-    currR = 0.91
+    minR = 0.9
+    maxR = 5.0*math.sqrt(3)
+    binSpace = (maxR-minR)/(numBins - 1)
+    rRange = np.linspace(minR, maxR, numBins)
+    
     #if we are creating the final bins for the first time
     if(len(allBinned) == 0):
-        for indx in range(lengthList):
-            tmpList = [currR, 0, 0]
+        for indx in range(numBins):
+            tmpList = [rRange[indx], 0, 0]
             allBinned.append(tmpList)
-            currR = currR + binSpace
+        
     for timeStep in range(len(timeStepRValues)):
         tempR = timeStepRValues[timeStep]
         tempPE = timeStepPEValues[timeStep]
@@ -86,7 +87,8 @@ def binning(timeStepRValues,timeStepPEValues,allBinned,numBins):
 def main():
     #specify where the text file is located
     filePath = open('/Users/gbonn/Summer_Research_2020/lammps_tut/melt.lmpdump','r')
-    #outFile = open('/Users/gbonn/Summer_Research_2020/lammps_tut/totalPE.txt','w')
+    totalPEOutFile = open('/Users/gbonn/Summer_Research_2020/lammps_tut/totalPotEnPerTS.txt','w')
+    rdfOutFile = open('/Users/gbonn/Summer_Research_2020/lammps_tut/radialDistFun.txt','w')
     xData = []
     yData = []
     zData = []
@@ -106,37 +108,55 @@ def main():
                 #print(xData[-1],yData[-1],zData[-1])
                 #print(len(binsTotal))
                 tempR,tempPE = determinePE(xData,yData,zData)
-                binsTotal, binWidth = binning(tempR,tempPE,binsTotal,50)
+                totalPEOutFile.write(str(sum(tempPE))+'\n')
+                binsTotal, binSpace = binning(tempR,tempPE,binsTotal,150)
                 xData = []
                 yData = []
                 zData = []
                 #if(lineNum > 508):
                     #outFile.write(str(tempR) + " " + str(tempPE) + "\n")
-                #if(lineNum >= 10000):
-                    #break
+                if(lineNum >= 75000):
+                    break
     
     #print(len(binsTotal))
     #print(binsTotal)
-    reimannApprox = 0
+    #reimannApproxTotalPE = 0
+    totalPts = 0
+    freq = []
     for indx in range(len(binsTotal)):
-        binnedR.append(binsTotal[indx][0])
-        binnedPE.append(binsTotal[indx][1])
-        reimannApprox = reimannApprox + binWidth*binsTotal[indx][1]
+        if(binsTotal[indx][2] == 0):
+            indx = indx - 1
+        else:
+            binnedR.append(binsTotal[indx][0])
+            binnedPE.append(binsTotal[indx][1])
+            #reimannApproxTotalPE = reimannApproxTotalPE + binWidth*binsTotal[indx][1]
+            totalPts = totalPts + binsTotal[indx][2]
     
-    print(reimannApprox)
     
+    for indx in range(len(binsTotal)):
+        currFreq = binsTotal[indx][2]/totalPts
+        freq.append(currFreq)
+        currR = binsTotal[indx][0]
+        rdfOutFile.write(str(currR) + " " + str(currFreq) + "\n")
+    
+    #print(reimannApproxTotalPE)
+    #print(sum(freq))
+
     filePath.close()
-    #outFile.close()
-    
+    totalPEOutFile.close()
+    rdfOutFile.close()
+        
     #plot potential energy at each time step
     
     plt.plot(binnedR,binnedPE,lw = 1)
+    #plt.plot(binnedR,freq)
     #plt.plot(allR[2],allPE[2],'ro',ms = 1)
-    plt.xlim(0,4)
-    plt.ylim(-2,8)
+    plt.xlim(0.5,4)
+    plt.ylim(-1.5,1.5)
     #plt.plot(allR[1],allPE[1],'ro')
-    plt.xlabel('Distance')
-    plt.ylabel('Potential Energy')
+    plt.xlabel('Distance (D)')
+    plt.ylabel('Potential Energy (kT)')
+    plt.legend(['Average Potential Energy'])
     plt.show()
 
 #run functions    
