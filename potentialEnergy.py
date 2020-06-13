@@ -3,16 +3,22 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 
+
+################## determinePE ##############################################################
+
 def determinePE(xPos,yPos,zPos):
     
+    # takes the coordinates of a certain number of atoms 
+    # determines the distance between every possible pair and the Lennard Jones potential 
+    # and returns the radii with the pair (assumes periodic boundary conditions)
+
     nAtoms = len(xPos)
     allR = []
     allPE = []
-
+    
+    # j is adjusted so that you never compare any two atoms twice 
     for i in range(nAtoms-1):
         for j in range(i+1,nAtoms):
-            #only execute if two different atoms
-            #positions
             x1 = xPos[i]
             x2 = xPos[j]
             y1 = yPos[i]
@@ -20,7 +26,7 @@ def determinePE(xPos,yPos,zPos):
             z1 = zPos[i]
             z2 = zPos[j]
 
-            #difference in pos
+            # implement PBC for box length 10 
             diffX = x2-x1
             if(diffX>5):
                 diffX = diffX - 10
@@ -37,7 +43,7 @@ def determinePE(xPos,yPos,zPos):
             if(diffZ<-5):
                 diffZ = diffZ + 10
 
-            #find r
+            # calculate r and potential energy 
             rSq = (diffX**2)+(diffY**2)+(diffZ**2)
             allR.append(rSq)
             tempPE = 4.0*(((1/rSq)**6)-((1/rSq)**3))
@@ -45,119 +51,176 @@ def determinePE(xPos,yPos,zPos):
         
     allR = np.sqrt(allR)
     return allR, allPE
+
+
+######################## binning ##############################################################
+
+def binning(binSpace, radRange, currRValues,currPEValues,allBinned,numBins):
     
-def binning(timeStepRValues,timeStepPEValues,allBinned,numBins):
-    #takes current r and PE values for one time step
-    #adds them in to the overall bin created
-    binnedR = []
-    binnedPE = []
-    minR = 0.9
-    maxR = 5.0*math.sqrt(3)
-    binSpace = (maxR-minR)/(numBins - 1)
-    rRange = np.linspace(minR, maxR, numBins)
-    
-    #if we are creating the final bins for the first time
+    # takes the current r and PE lists for the current time step 
+    # as well as a list of all the past binned r and PE values 
+    # and the number of bins 
+    # finds what bin r is in and averages in PE to running total
+    # returns compiled bin and the specified 
+   
+    #maxR = max(currRValues)
+    #currVol = (4.0/3.0)*(math.pi)*(maxR**3)
+    #currDens = 500.0/currVol
+    # if we are creating the final bins for the first time
     if(len(allBinned) == 0):
         for indx in range(numBins):
-            tmpList = [rRange[indx], 0, 0]
+            # adding arrays of format [r, PE, count] to overall array
+            # count is number of times a PE has been added to that bin
+            tmpList = [radRange[indx], 0, 0]
             allBinned.append(tmpList)
-        
-    for timeStep in range(len(timeStepRValues)):
-        tempR = timeStepRValues[timeStep]
-        tempPE = timeStepPEValues[timeStep]
+    # bin the current (r,PE) pairs   
+    for atomNum in range(len(currRValues)):
+        tempR = currRValues[atomNum]
+        tempPE = currPEValues[atomNum]
+        # iterate from back of list starting at the largest r until
+        # we find spot for tempR in bin 
         binIndx = -1
         while (tempR < allBinned[binIndx][0]):
             binIndx = binIndx - 1
-            if(binIndx == -len(allBinned)):
-                binIndx = 0
+            if(binIndx == -len(allBinned)): #if at front of the list
+                binIndx = 0 #put in first bin and break loop
                 break
-        #if PE hasn't been added to bin yet
+        # if initializing this bin
         if(allBinned[binIndx][2] == 0): 
             allBinned[binIndx][1] = tempPE
-            allBinned[binIndx][2] = 1.0 #added one PE so far
-        #if PE has already been added to this bin before 
+            allBinned[binIndx][2] = 2.0 #first PE added 
         else:
+            # calculate new average PE
             totPrevPE = allBinned[binIndx][1]*allBinned[binIndx][2]
-            allBinned[binIndx][2] = allBinned[binIndx][2] + 1.0
-            allBinned[binIndx][1] = (totPrevPE + tempPE)/allBinned[binIndx][2]
+            allBinned[binIndx][2] = allBinned[binIndx][2] + 2.0
+            allBinned[binIndx][1] = (totPrevPE + 2*tempPE)/allBinned[binIndx][2]
             
+    return allBinned
+
+######################### radialDistFun ##########################################################
+
+def radialDistFun(binWidth,allRad,allCts,runs):
     
-    return allBinned, binSpace
+    # takes a binSize, all of the radii from all time steps, the bin count for each
+    # radius and the number of time steps performed
+    # creates the radial distribution function g(r)
+    radDistVal = []
+    n = []
+    nID = []
+    meanDens = (500)/(10**3) #500.0/((4.0/3.0)*math.pi*(max(allRad)**3))
+    #print(densList)
+    #print(meanDens)
+    for i in range(len(allRad)):
+        n.append(allCts[i]/(500*runs))
+        tempNId = (4.0/3.0)*math.pi*(meanDens)*((allRad[i] + 0.5*binWidth)**3 - (allRad[i]- 0.5*binWidth)**3)
+        nID.append(tempNId)
+        radDistVal.append(n[i]/nID[i])
+
+    return radDistVal
+
+
+
+################################### MAIN ##########################################################
 
 def main():
-    #specify where the text file is located
-    filePath = open('/Users/gbonn/Summer_Research_2020/lammps_tut/melt.lmpdump','r')
-    totalPEOutFile = open('/Users/gbonn/Summer_Research_2020/lammps_tut/totalPotEnPerTS.txt','w')
-    rdfOutFile = open('/Users/gbonn/Summer_Research_2020/lammps_tut/radialDistFun.txt','w')
+
+    #specify where files are located
+    coordFile = open('/Users/gbonn/Summer_Research_2020/lammps_tut/melt.lmpdump','r') #contains all the coords of the atoms at every time stamp
+    #totalPEOutFile = open('/Users/gbonn/Summer_Research_2020/lammps_tut/totalPotEnPerTS.txt','w') 
+    
+    # initialize necessary variables
     xData = []
     yData = []
     zData = []
-    binsTotal = []
-    binnedR = []
-    binnedPE = []
-    binWidth = 0
+    binsTotal = [] # has length numBins and contains arrays [r, PE, count]
+    binnedR = [] # r bins
+    binnedPE = [] # pe bins
+    binnedPts = [] # how many pairs we added to each bin
+    #numDens = []
+    currTimeStep = 0
+    inFileTimeStep = 0
+    totBins = 100
+    minR = 0.0
+    maxR = 5.0 # for box length 10 with PBC
+    binSize = (maxR-minR)/(totBins - 1)
+    rRange = np.linspace(minR, maxR, totBins)
 
-    for lineNum, line in enumerate(filePath):
-        testLine = lineNum%509
-        if(testLine not in range(9)):
+    for lineNum, line in enumerate(coordFile):
+        testLine = lineNum%509 #dump file has 9 lines of garbage 500 lines of coords
+        if(testLine not in range(9) and inFileTimeStep%5 == 0):#if not a garbage line
             lineList = line.split()
             xData.append(float(lineList[2]))
             yData.append(float(lineList[3]))
             zData.append(float(lineList[4]))
-            if(testLine == 508):
-                #print(xData[-1],yData[-1],zData[-1])
-                #print(len(binsTotal))
+            # if last coordinate in time step, analyze time step
+            if(testLine == 508): 
                 tempR,tempPE = determinePE(xData,yData,zData)
-                totalPEOutFile.write(str(sum(tempPE))+'\n')
-                binsTotal, binSpace = binning(tempR,tempPE,binsTotal,150)
+                binsTotal = binning(binSize,rRange,tempR,tempPE,binsTotal,totBins)
+                #numDens.append(timeDens)
+                # reset xyz arrays to empty
                 xData = []
                 yData = []
                 zData = []
-                #if(lineNum > 508):
-                    #outFile.write(str(tempR) + " " + str(tempPE) + "\n")
-                if(lineNum >= 75000):
+                currTimeStep = currTimeStep + 1 # how many time steps we've done
+                # control how many time steps we analyze
+                if(currTimeStep > 50):
                     break
-    
-    #print(len(binsTotal))
-    #print(binsTotal)
-    #reimannApproxTotalPE = 0
-    totalPts = 0
-    freq = []
+        if(testLine == 508):
+            inFileTimeStep = inFileTimeStep + 1
+        
+    #close files we don't need
+    coordFile.close()
+
+    # organize our binned data
     for indx in range(len(binsTotal)):
+        # if we didn't initialize bin, skip it
         if(binsTotal[indx][2] == 0):
             indx = indx - 1
+        # split up bin into its three parts
         else:
-            binnedR.append(binsTotal[indx][0])
+            binnedR.append(binsTotal[indx][0] + 0.5*binSize) #want to plot midpoint of bin
             binnedPE.append(binsTotal[indx][1])
-            #reimannApproxTotalPE = reimannApproxTotalPE + binWidth*binsTotal[indx][1]
-            totalPts = totalPts + binsTotal[indx][2]
+            binnedPts.append(binsTotal[indx][2])
     
-    
-    for indx in range(len(binsTotal)):
-        currFreq = binsTotal[indx][2]/totalPts
-        freq.append(currFreq)
-        currR = binsTotal[indx][0]
-        rdfOutFile.write(str(currR) + " " + str(currFreq) + "\n")
-    
-    #print(reimannApproxTotalPE)
-    #print(sum(freq))
+    #print(binnedPts)
+    # generate radial distribution function 
+    finalG = radialDistFun(binSize,binnedR,binnedPts, currTimeStep)
+    #print(finalG)
+    #print(sum(binnedPts))
+    # plot the RDF 
+    VMDFile = open('/Users/gbonn/Summer_Research_2020/lammps_tut/RDF.AGR','r')
+    data = np.loadtxt(VMDFile)
+    VMDRad = data[:,0]
+    gr = data[:,1]
+    rdfPlot = plt.figure(1)
+    plt.plot(binnedR,finalG,'b')
+    plt.plot(VMDRad,gr,'r')
+    plt.xlim(0,5)
+    plt.ylim(0, 3)
+    plt.xlabel("Distance (d)")
+    plt.ylabel("g(r)")
+    plt.legend(["Calculated", "VMD"])
+    plt.show()
 
-    filePath.close()
-    totalPEOutFile.close()
-    rdfOutFile.close()
         
     #plot potential energy at each time step
-    
-    plt.plot(binnedR,binnedPE,lw = 1)
-    #plt.plot(binnedR,freq)
-    #plt.plot(allR[2],allPE[2],'ro',ms = 1)
+    pePlot = plt.figure(2)    
+    plt.plot(binnedR,binnedPE,'bo',ms = 1)
+    lammpsFile = open('/Users/gbonn/Summer_Research_2020/lammps_tut/potentialOuput.data','r')
+    data = np.loadtxt(lammpsFile)
+    allRad = data[:,1]
+    PE = data[:,2]
+    plt.plot(allRad,PE,'ro',ms = 1)
+    plt.xlabel("Distance (d)")
+    plt.ylabel("Potential Energy (kT)")
+    plt.legend(["Calculated", "LAMMPS"])
     plt.xlim(0.5,4)
     plt.ylim(-1.5,1.5)
-    #plt.plot(allR[1],allPE[1],'ro')
-    plt.xlabel('Distance (D)')
-    plt.ylabel('Potential Energy (kT)')
-    plt.legend(['Average Potential Energy'])
     plt.show()
+    
+    #close all files
+    VMDFile.close()
+    lammpsFile.close()
 
 #run functions    
 main()
