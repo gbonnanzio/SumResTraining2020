@@ -8,6 +8,7 @@ def readMyRdfFile(fileName, linesToSkipInitial,linesToSkipLater, linesToRead, nu
     # a list of col indices that you want to read
     # so if you want to read the 3rd and 4th column you
     # would pass a list [2, 3]
+    # 
     
     # open file and read lines
     fileObj = open(fileName, 'r')
